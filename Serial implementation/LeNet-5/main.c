@@ -99,7 +99,7 @@ void load_train_test()
 		free(test_label);
 		system("pause");
 	}
-	display_img(train_data[0]);
+	//display_img(train_data[0]);
 
 	LeNet5 *lenet = (LeNet5 *)malloc(sizeof(LeNet5));
 	if (load(lenet, LENET_FILE))
