@@ -1,0 +1,73 @@
+//reduc sum ! dont use this, slows down significantly
+/*
+{
+	__shared__ double mean[784];
+	__shared__ double std[784];
+	__shared__ int reduc_len;
+	if (tidx == 0)
+		reduc_len = 392; //784/2
+		
+	int j = tidx / 28, k = tidx % 28;
+	if (tidx < 784)
+	{
+		mean[tidx] = inputs[startidx + i][j][k];
+		std[tidx] = inputs[startidx + i][j][k] * inputs[startidx + i][j][k];
+	}
+	__syncthreads(); //wait for mean,std array fill
+	while (reduc_len)
+	{
+		if (tidx < reduc_len) {
+			mean[tidx] += mean[tidx + reduc_len];
+			std[tidx] += std[tidx + reduc_len];
+		}
+		reduc_len /= 2;
+		__syncthreads();
+	}
+		
+	if (tidx == 0) {
+		mean[0] /= 784;
+		std[0] = sqrt(std[0] / 784 - mean[0] * mean[0]);
+	}
+	__syncthreads(); //wait for mean,std calculation
+	if (tidx < 784)
+	{
+		//z-score normalization
+		features->input[0][j + PADDING][k + PADDING] = (inputs[startidx + i][j][k] - mean[0]) / std[0];
+	}
+}
+/**/
+
+
+//cuda valid  and  forward 
+/*
+#define cudaCONVOLUTE_VALID(tidx,input,output,weight)									\
+{																						\
+	int _conv_valid_tidx = GETLENGTH(output)*GETLENGTH(*(output));						\
+	int iter_tidx = tidx,o0,o1;															\
+	while(iter_tidx < _conv_valid_tidx){												\
+		o0 = iter_tidx / GETLENGTH(*(output));											\
+		o1 = iter_tidx % GETLENGTH(*(output));											\
+		FOREACH(w0,GETLENGTH(weight))													\
+			FOREACH(w1,GETLENGTH(*(weight))){											\
+				(output)[o0][o1] += (input)[o0 + w0][o1 + w1] * (weight)[w0][w1];		\
+			}																			\
+		iter_tidx += TRAIN_KENREL_THREADS;												\
+	}																					\
+}
+
+#define cudaCONVOLUTION_FORWARD(tidx,input,output,weight,bias,action)			\
+{																				\
+	for (int x = 0; x < GETLENGTH(weight); ++x)									\
+		for (int y = 0; y < GETLENGTH(*weight); ++y)							\
+			cudaCONVOLUTE_VALID(tidx,input[x], output[y], weight[x][y]);		\
+	__syncthreads();															\
+	int _conv_forward_tidx = GETLENGTH(output)*GETCOUNT(output[0]);				\
+	printf("_conv_forward_tidx : %d\n",_conv_forward_tidx);						\
+	int iter_tidx = tidx;														\
+	while(iter_tidx < _conv_forward_tidx){										\
+		int j = iter_tidx % GETLENGTH(output), i = iter_tidx/GETLENGTH(output);	\
+		((double *)output[j])[i] = action(((double *)output[j])[i] + bias[j]);	\
+		iter_tidx += TRAIN_KENREL_THREADS;										\
+	}																			\
+}
+*/
